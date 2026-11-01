@@ -9,6 +9,7 @@ import com.elasnatech.app.data.repository.RoomAppRepository
 import com.elasnatech.app.data.repository.ResultadoQuizModel
 import com.elasnatech.app.data.repository.QuizResult
 import com.elasnatech.app.QuizQuestion
+import com.elasnatech.app.ui.quiz.QuizQuestions
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,6 +37,13 @@ class QuizViewModel(application: Application, private val repository: AppReposit
 
     fun carregarPerguntas(): List<QuizQuestion> {
         return repository.obterPerguntasQuiz()
+    }
+
+    /**
+     * Retorna perguntas aleatórias e embaralhadas a cada nova partida.
+     */
+    fun obterPerguntasEmbaralhadas(count: Int = 10): List<QuizQuestion> {
+        return QuizQuestions.getShuffledQuiz(count)
     }
 
     fun finalizarQuiz(quizId: Int, acertos: Int, totalPerguntas: Int, onResultadoPronto: (ResultadoQuizModel) -> Unit) {

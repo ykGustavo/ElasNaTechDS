@@ -124,31 +124,6 @@ object MockData {
         SupportItem("Bolsas de estudo", "TODO: adicionar bolsas e cursos gratuitos.")
     )
 
-    val quiz = listOf(
-        QuizQuestion(
-            "Quem é considerada a primeira programadora da história?",
-            listOf("Grace Hopper", "Ada Lovelace", "Hedy Lamarr"), 1,
-            "Ada Lovelace escreveu o primeiro algoritmo para uma máquina, em 1843."
-        ),
-        QuizQuestion(
-            "Quem desenvolveu um dos primeiros compiladores?",
-            listOf("Grace Hopper", "Katherine Johnson", "Margaret Hamilton"), 0,
-            "Grace Hopper criou um dos primeiros compiladores, em 1952."
-        ),
-        QuizQuestion(
-            "Hedy Lamarr patenteou qual tecnologia?",
-            listOf("Compilador", "Salto de frequência", "Banco de dados"), 1,
-            "A patente de 1942 usava salto de frequência."
-        ),
-        QuizQuestion(
-            "Quem liderou o software de bordo da Apollo?",
-            listOf("Margaret Hamilton", "Ada Lovelace", "Grace Hopper"), 0,
-            "Margaret Hamilton liderou a equipe do software da Apollo."
-        ),
-        QuizQuestion(
-            "Katherine Johnson trabalhou em qual agência?",
-            listOf("NASA", "Google", "IBM"), 0,
-            "Ela calculou trajetórias de missões para a NASA."
-        )
-    )
+    // Quiz com 16 perguntas ricas de 4 alternativas sobre mulheres na tecnologia
+    val quiz = com.elasnatech.app.ui.quiz.QuizQuestions.allQuestions
 }
