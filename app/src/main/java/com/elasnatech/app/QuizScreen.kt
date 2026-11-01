@@ -2,7 +2,6 @@ package com.elasnatech.app
 
 import android.content.Intent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -34,29 +36,125 @@ import androidx.compose.ui.unit.dp
 private val CorrectGreen = Color(0xFF2E7D32)
 private val WrongRed = Color(0xFFC62828)
 
+private enum class ChallengesTab(val label: String) {
+    CHALLENGES("Desafios & Quizzes"),
+    BADGES("Coleção de Emblemas")
+}
+
 @Composable
 fun QuizScreen() {
-    val questions = MockData.quiz
+    var selectedTab by rememberSaveable { mutableStateOf(ChallengesTab.CHALLENGES) }
+    var activeQuiz by remember { mutableStateOf<Dev5QuizTopicMock?>(null) }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Seletor de sub-abas superior (Desafios & Quizzes vs Coleção de Emblemas)
+        // Só exibe se não estiver no meio de um quiz ativo
+        if (activeQuiz == null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ChallengesTab.entries.forEach { tab ->
+                    FilterChip(
+                        selected = selectedTab == tab,
+                        onClick = { selectedTab = tab },
+                        label = { Text(tab.label, fontWeight = FontWeight.SemiBold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    )
+                }
+            }
+        }
+
+        // Conteúdo da aba selecionada
+        if (activeQuiz != null) {
+            ActiveQuizView(
+                quizTopic = activeQuiz!!,
+                onCloseQuiz = { activeQuiz = null }
+            )
+        } else {
+            when (selectedTab) {
+                ChallengesTab.CHALLENGES -> {
+                    ChallengesHomeView(
+                        onSelectQuiz = { quiz -> activeQuiz = quiz }
+                    )
+                }
+                ChallengesTab.BADGES -> {
+                    BadgesScreen()
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Visão principal da aba Desafios (Streak, Missões e Lista dos 4 Quizzes).
+ */
+@Composable
+private fun ChallengesHomeView(
+    onSelectQuiz: (Dev5QuizTopicMock) -> Unit
+) {
+    val streakData = Dev5MockData.streak
+    val missions = Dev5MockData.missions
+    val quizzes = Dev5MockData.quizzes
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        item { SectionTitle("Desafios & Hábitos") }
+
+        // Streak e Progresso Semanal
+        item {
+            StreakBannerCard(streak = streakData)
+        }
+
+        // Missões em Destaque
+        item { SectionTitle("Missões em Andamento") }
+        items(missions, key = { it.id }) { mission ->
+            MissionItemCard(mission = mission)
+        }
+
+        // Catálogo dos 4 Quizzes
+        item {
+            Spacer(Modifier.height(4.dp))
+            SectionTitle("Quizzes Temáticos")
+        }
+        items(quizzes, key = { it.id }) { quiz ->
+            QuizTopicCard(
+                quiz = quiz,
+                onStartQuiz = { onSelectQuiz(quiz) }
+            )
+        }
+    }
+}
+
+/**
+ * Interface de Execução do Quiz selecionado (8 perguntas com feedback).
+ */
+@Composable
+private fun ActiveQuizView(
+    quizTopic: Dev5QuizTopicMock,
+    onCloseQuiz: () -> Unit
+) {
+    val questions = quizTopic.questions
     val context = LocalContext.current
 
-    // Estados simples de UI. TODO: mover para um ViewModel quando o app crescer.
-    var currentIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selected by rememberSaveable { mutableStateOf<Int?>(null) }
-    var score by rememberSaveable { mutableIntStateOf(0) }
-    var finished by rememberSaveable { mutableStateOf(false) }
+    var currentIndex by rememberSaveable(quizTopic.id) { mutableIntStateOf(0) }
+    var selectedOption by rememberSaveable(quizTopic.id) { mutableStateOf<Int?>(null) }
+    var score by rememberSaveable(quizTopic.id) { mutableIntStateOf(0) }
+    var finished by rememberSaveable(quizTopic.id) { mutableStateOf(false) }
 
-    // Dados mockados do topo da tela
-    val streakDays = 5
-    val weeklyGoal = 5
-    var missionsDone by rememberSaveable { mutableIntStateOf(3) }
-    val weeklyProgress by animateFloatAsState(missionsDone / weeklyGoal.toFloat(), label = "weekly")
-
-    val question = questions[currentIndex]
+    val currentQuestion = questions[currentIndex]
     val isLast = currentIndex == questions.lastIndex
 
     fun restart() {
         currentIndex = 0
-        selected = null
+        selectedOption = null
         score = 0
         finished = false
     }
@@ -65,54 +163,60 @@ fun QuizScreen() {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item { SectionTitle("Desafios") }
+        // Cabeçalho do Quiz com botão de voltar
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        quizTopic.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "Pergunta ${currentIndex + 1} de ${questions.size}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+                TextButton(onClick = onCloseQuiz) {
+                    Text("Voltar aos Desafios")
+                }
+            }
+        }
 
-        // Streak + progresso semanal
+        // Card com o Enunciado da Pergunta
         item {
             AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        "🔥 $streakDays Dias Seguidos!",
+                        currentQuestion.question,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("Progresso semanal: $missionsDone de $weeklyGoal missões", color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(progress = { weeklyProgress }, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
 
-        // Pergunta
-        item {
-            AppCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text(
-                        "Pergunta ${currentIndex + 1} de ${questions.size}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(question.question, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
-
-        // Opções
+        // Alternativas
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                question.options.forEachIndexed { index, text ->
+                currentQuestion.options.forEachIndexed { index, optionText ->
                     OptionCard(
-                        text = text,
+                        text = optionText,
                         index = index,
-                        correctIndex = question.correctIndex,
-                        selected = selected,
+                        correctIndex = currentQuestion.correctIndex,
+                        selected = selectedOption,
                         onClick = {
-                            if (selected == null) {
-                                selected = index
-                                if (index == question.correctIndex) score++
+                            if (selectedOption == null) {
+                                selectedOption = index
+                                if (index == currentQuestion.correctIndex) {
+                                    score++
+                                }
                             }
                         }
                     )
@@ -120,32 +224,39 @@ fun QuizScreen() {
             }
         }
 
-        // Feedback + botão de avançar
-        if (selected != null) {
+        // Feedback Imediato e Botão Avançar
+        if (selectedOption != null) {
             item {
-                val correct = selected == question.correctIndex
+                val isCorrect = selectedOption == currentQuestion.correctIndex
                 AppCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
                         Text(
-                            if (correct) "Correto! 🎉" else "Quase! ❌",
+                            text = if (isCorrect) "Correto! 🎉" else "Quase! ❌",
                             fontWeight = FontWeight.Bold,
-                            color = if (correct) CorrectGreen else WrongRed
+                            color = if (isCorrect) CorrectGreen else WrongRed
                         )
-                        Text(question.explanation, color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = currentQuestion.explanation,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = {
                                 if (isLast) {
                                     finished = true
-                                    missionsDone = minOf(weeklyGoal, missionsDone + 1)
                                 } else {
                                     currentIndex++
-                                    selected = null
+                                    selectedOption = null
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (isLast) "Ver resultado" else "Próxima", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (isLast) "Ver Resultado" else "Próxima Pergunta",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -153,17 +264,29 @@ fun QuizScreen() {
         }
     }
 
-    // Tela de nota final
+    // Modal de Resultado Final
     if (finished) {
-        val badge = badgeFor(score, questions.size)
+        val earnedBadgeTitle = badgeFor(score, questions.size)
         AlertDialog(
-            onDismissRequest = { restart() },
-            title = { Text("Resultado", fontWeight = FontWeight.Bold) },
+            onDismissRequest = {
+                restart()
+                onCloseQuiz()
+            },
+            title = {
+                Text("Desafio Concluído! 🎉", fontWeight = FontWeight.Bold)
+            },
             text = {
                 Column {
-                    Text("Você acertou $score de ${questions.size}.")
-                    Spacer(Modifier.height(8.dp))
-                    Text("Selo conquistado: $badge", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Você acertou $score de ${questions.size} perguntas no quiz \"${quizTopic.title}\".",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Selo alcançado: $earnedBadgeTitle",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             },
             confirmButton = {
@@ -172,13 +295,22 @@ fun QuizScreen() {
                         type = "text/plain"
                         putExtra(
                             Intent.EXTRA_TEXT,
-                            "Fiz $score/${questions.size} no quiz do app Elas na Tech e ganhei o selo $badge!"
+                            "Fiz $score/${questions.size} no quiz \"${quizTopic.title}\" do app Elas na Tech e ganhei o selo $earnedBadgeTitle!"
                         )
                     }
-                    context.startActivity(Intent.createChooser(intent, "Compartilhar resultado"))
-                }) { Text("Compartilhar") }
+                    context.startActivity(Intent.createChooser(intent, "Compartilhar Resultado"))
+                }) {
+                    Text("Compartilhar")
+                }
             },
-            dismissButton = { TextButton(onClick = { restart() }) { Text("Tentar de novo") } }
+            dismissButton = {
+                TextButton(onClick = {
+                    restart()
+                    onCloseQuiz()
+                }) {
+                    Text("Concluir")
+                }
+            }
         )
     }
 }
@@ -202,12 +334,14 @@ private fun OptionCard(
     val highlighted = answered && (index == correctIndex || index == selected)
 
     AppCard(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = !answered, onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !answered, onClick = onClick),
         containerColor = background
     ) {
         Row(Modifier.padding(16.dp)) {
             Text(
-                text,
+                text = text,
                 fontWeight = FontWeight.Medium,
                 color = if (highlighted) Color.White else MaterialTheme.colorScheme.onSurface
             )
