@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.elasnatech.app.data.Quiz
+import com.elasnatech.app.data.QuizData
+import com.elasnatech.app.data.repository.ResultadoQuizModel
+import com.elasnatech.app.ui.badges.BadgesScreen
+import com.elasnatech.app.viewmodel.ProfileViewModel
+import com.elasnatech.app.viewmodel.QuizViewModel
+import java.util.Calendar
 
 private val CorrectGreen = Color(0xFF2E7D32)
 private val WrongRed = Color(0xFFC62828)
@@ -42,13 +51,15 @@ private enum class ChallengesTab(val label: String) {
 }
 
 @Composable
-fun QuizScreen() {
+fun QuizScreen(
+    profileViewModel: ProfileViewModel = viewModel(),
+    quizViewModel: QuizViewModel = viewModel()
+) {
     var selectedTab by rememberSaveable { mutableStateOf(ChallengesTab.CHALLENGES) }
-    var activeQuiz by remember { mutableStateOf<Dev5QuizTopicMock?>(null) }
+    var activeQuiz by remember { mutableStateOf<Quiz?>(null) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Seletor de sub-abas superior (Desafios & Quizzes vs Coleção de Emblemas)
-        // Só exibe se não estiver no meio de um quiz ativo
+        // Seletor de abas superior (Desafios & Quizzes vs Coleção de Emblemas)
         if (activeQuiz == null) {
             Row(
                 modifier = Modifier
@@ -73,13 +84,16 @@ fun QuizScreen() {
         // Conteúdo da aba selecionada
         if (activeQuiz != null) {
             ActiveQuizView(
-                quizTopic = activeQuiz!!,
+                quiz = activeQuiz!!,
+                quizViewModel = quizViewModel,
                 onCloseQuiz = { activeQuiz = null }
             )
         } else {
             when (selectedTab) {
                 ChallengesTab.CHALLENGES -> {
                     ChallengesHomeView(
+                        profileViewModel = profileViewModel,
+                        quizViewModel = quizViewModel,
                         onSelectQuiz = { quiz -> activeQuiz = quiz }
                     )
                 }
@@ -92,15 +106,89 @@ fun QuizScreen() {
 }
 
 /**
- * Visão principal da aba Desafios (Streak, Missões e Lista dos 4 Quizzes).
+ * Visão principal de Desafios conectada aos ViewModels reais.
  */
 @Composable
 private fun ChallengesHomeView(
-    onSelectQuiz: (Dev5QuizTopicMock) -> Unit
+    profileViewModel: ProfileViewModel,
+    quizViewModel: QuizViewModel,
+    onSelectQuiz: (Quiz) -> Unit
 ) {
-    val streakData = Dev5MockData.streak
-    val missions = Dev5MockData.missions
-    val quizzes = Dev5MockData.quizzes
+    val perfil by profileViewModel.perfil.collectAsState()
+    val historico by quizViewModel.historicoQuizzes.collectAsState()
+
+    val currentStreak = perfil?.streak ?: 0
+    val totalQuizzesCompleted = historico.size
+    val distinctQuizzesCompleted = historico.map { it.quizId }.distinct().size
+    val hasPerfectScore = historico.any { it.score == it.total && it.total > 0 }
+
+    // Determina o dia atual da semana (0 = Seg, ..., 6 = Dom)
+    val todayDayOfWeekIndex = remember {
+        val cal = Calendar.getInstance()
+        when (cal.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> 0
+            Calendar.TUESDAY -> 1
+            Calendar.WEDNESDAY -> 2
+            Calendar.THURSDAY -> 3
+            Calendar.FRIDAY -> 4
+            Calendar.SATURDAY -> 5
+            Calendar.SUNDAY -> 6
+            else -> 0
+        }
+    }
+
+    val dayNames = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+    val daysOfWeek = remember(currentStreak, todayDayOfWeekIndex) {
+        dayNames.mapIndexed { index, name ->
+            val isToday = index == todayDayOfWeekIndex
+            val isCompleted = if (index <= todayDayOfWeekIndex) {
+                (todayDayOfWeekIndex - index) < currentStreak
+            } else false
+            DayStreakUi(dayName = name, isCompleted = isCompleted, isToday = isToday)
+        }
+    }
+
+    // Missões conectadas ao estado real do usuário
+    val missions = listOf(
+        MissionUi(
+            id = 1,
+            title = "Primeiro Passo",
+            description = "Finalize o seu primeiro quiz na plataforma.",
+            currentProgress = minOf(1, totalQuizzesCompleted),
+            totalRequired = 1,
+            xpReward = 50,
+            isCompleted = totalQuizzesCompleted >= 1
+        ),
+        MissionUi(
+            id = 2,
+            title = "Sequência em Chamas",
+            description = "Atinja um streak de pelo menos 5 dias seguidos.",
+            currentProgress = minOf(5, currentStreak),
+            totalRequired = 5,
+            xpReward = 150,
+            isCompleted = currentStreak >= 5
+        ),
+        MissionUi(
+            id = 3,
+            title = "Exploradora de Temas",
+            description = "Conclua pelo menos 3 quizzes temáticos diferentes.",
+            currentProgress = minOf(3, distinctQuizzesCompleted),
+            totalRequired = 3,
+            xpReward = 120,
+            isCompleted = distinctQuizzesCompleted >= 3
+        ),
+        MissionUi(
+            id = 4,
+            title = "Gabarito Perfeito",
+            description = "Acerte todas as 8 perguntas de um quiz sem errar.",
+            currentProgress = if (hasPerfectScore) 1 else 0,
+            totalRequired = 1,
+            xpReward = 100,
+            isCompleted = hasPerfectScore
+        )
+    )
+
+    val completedMissionsCount = missions.count { it.isCompleted }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
@@ -108,23 +196,28 @@ private fun ChallengesHomeView(
     ) {
         item { SectionTitle("Desafios & Hábitos") }
 
-        // Streak e Progresso Semanal
+        // Banner do Streak
         item {
-            StreakBannerCard(streak = streakData)
+            StreakBannerCard(
+                currentStreak = currentStreak,
+                completedMissionsCount = completedMissionsCount,
+                totalMissionsGoal = missions.size,
+                daysOfWeek = daysOfWeek
+            )
         }
 
-        // Missões em Destaque
+        // Lista de Missões
         item { SectionTitle("Missões em Andamento") }
         items(missions, key = { it.id }) { mission ->
             MissionItemCard(mission = mission)
         }
 
-        // Catálogo dos 4 Quizzes
+        // Quizzes Oficiais do QuizData
         item {
             Spacer(Modifier.height(4.dp))
             SectionTitle("Quizzes Temáticos")
         }
-        items(quizzes, key = { it.id }) { quiz ->
+        items(QuizData.allQuizzes, key = { it.id }) { quiz ->
             QuizTopicCard(
                 quiz = quiz,
                 onStartQuiz = { onSelectQuiz(quiz) }
@@ -134,20 +227,22 @@ private fun ChallengesHomeView(
 }
 
 /**
- * Interface de Execução do Quiz selecionado (8 perguntas com feedback).
+ * Interface de Execução do Quiz selecionado conectada ao Room via [QuizViewModel].
  */
 @Composable
 private fun ActiveQuizView(
-    quizTopic: Dev5QuizTopicMock,
+    quiz: Quiz,
+    quizViewModel: QuizViewModel,
     onCloseQuiz: () -> Unit
 ) {
-    val questions = quizTopic.questions
+    val questions = quiz.questions
     val context = LocalContext.current
 
-    var currentIndex by rememberSaveable(quizTopic.id) { mutableIntStateOf(0) }
-    var selectedOption by rememberSaveable(quizTopic.id) { mutableStateOf<Int?>(null) }
-    var score by rememberSaveable(quizTopic.id) { mutableIntStateOf(0) }
-    var finished by rememberSaveable(quizTopic.id) { mutableStateOf(false) }
+    var currentIndex by rememberSaveable(quiz.id) { mutableIntStateOf(0) }
+    var selectedOption by rememberSaveable(quiz.id) { mutableStateOf<Int?>(null) }
+    var score by rememberSaveable(quiz.id) { mutableIntStateOf(0) }
+    var finished by rememberSaveable(quiz.id) { mutableStateOf(false) }
+    var resultadoFinal by remember { mutableStateOf<ResultadoQuizModel?>(null) }
 
     val currentQuestion = questions[currentIndex]
     val isLast = currentIndex == questions.lastIndex
@@ -157,13 +252,14 @@ private fun ActiveQuizView(
         selectedOption = null
         score = 0
         finished = false
+        resultadoFinal = null
     }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Cabeçalho do Quiz com botão de voltar
+        // Cabeçalho do Quiz
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -171,7 +267,7 @@ private fun ActiveQuizView(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        quizTopic.title,
+                        quiz.title,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -188,7 +284,7 @@ private fun ActiveQuizView(
             }
         }
 
-        // Card com o Enunciado da Pergunta
+        // Card do Enunciado
         item {
             AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
@@ -245,7 +341,15 @@ private fun ActiveQuizView(
                         Button(
                             onClick = {
                                 if (isLast) {
-                                    finished = true
+                                    // Salva no banco de dados Room via ViewModel
+                                    quizViewModel.finalizarQuiz(
+                                        quizId = quiz.id,
+                                        acertos = score,
+                                        totalPerguntas = questions.size
+                                    ) { resultado ->
+                                        resultadoFinal = resultado
+                                        finished = true
+                                    }
                                 } else {
                                     currentIndex++
                                     selectedOption = null
@@ -254,7 +358,7 @@ private fun ActiveQuizView(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                if (isLast) "Ver Resultado" else "Próxima Pergunta",
+                                if (isLast) "Finalizar Desafio" else "Próxima Pergunta",
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -264,9 +368,14 @@ private fun ActiveQuizView(
         }
     }
 
-    // Modal de Resultado Final
+    // Modal de Resultado Final com Persistência Real
     if (finished) {
         val earnedBadgeTitle = badgeFor(score, questions.size)
+        val xpGanho = resultadoFinal?.xpGanho ?: (score * 10)
+        val novosEmblemas = resultadoFinal?.emblemasNovos.orEmpty()
+        val subiuNivel = resultadoFinal?.subiuDeNivel == true
+        val novoNivel = resultadoFinal?.novoNivel
+
         AlertDialog(
             onDismissRequest = {
                 restart()
@@ -278,15 +387,41 @@ private fun ActiveQuizView(
             text = {
                 Column {
                     Text(
-                        "Você acertou $score de ${questions.size} perguntas no quiz \"${quizTopic.title}\".",
+                        "Você acertou $score de ${questions.size} perguntas no quiz \"${quiz.title}\".",
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         "Selo alcançado: $earnedBadgeTitle",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Pontos: +$xpGanho XP adicionados ao seu perfil!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    if (subiuNivel && novoNivel != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "⭐ Parabéns! Você subiu para o Nível $novoNivel!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (novosEmblemas.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "🏆 Novo emblema desbloqueado na sua galeria!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -295,7 +430,7 @@ private fun ActiveQuizView(
                         type = "text/plain"
                         putExtra(
                             Intent.EXTRA_TEXT,
-                            "Fiz $score/${questions.size} no quiz \"${quizTopic.title}\" do app Elas na Tech e ganhei o selo $earnedBadgeTitle!"
+                            "Fiz $score/${questions.size} no quiz \"${quiz.title}\" do app Elas na Tech e ganhei o selo $earnedBadgeTitle! (+${xpGanho} XP)"
                         )
                     }
                     context.startActivity(Intent.createChooser(intent, "Compartilhar Resultado"))

@@ -3,6 +3,7 @@ package com.elasnatech.app
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,7 +42,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -129,13 +132,32 @@ fun HomeScreen(onGoToChallenges: () -> Unit) {
 
 @Composable
 private fun Avatar(name: String) {
-    // TODO: trocar por Image(painterResource(...)) quando tiverem as fotos.
-    val initials = name.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("")
-    Box(
-        Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(initials, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+    val imageRes = when (name) {
+        "Ada Lovelace" -> R.drawable.ada_lovelace
+        "Grace Hopper" -> R.drawable.grace_hopper
+        "Hedy Lamarr" -> R.drawable.hedy_lamarr
+        "Katherine Johnson" -> R.drawable.katherine_johnson
+        "Margaret Hamilton" -> R.drawable.margaret_hamilton
+        else -> null
+    }
+
+    if (imageRes != null) {
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = "Foto de $name",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+        )
+    } else {
+        val initials = name.split(" ").mapNotNull { it.firstOrNull() }.take(2).joinToString("")
+        Box(
+            Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(initials, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+        }
     }
 }
 

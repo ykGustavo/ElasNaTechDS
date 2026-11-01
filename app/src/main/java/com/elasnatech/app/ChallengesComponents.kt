@@ -28,19 +28,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.elasnatech.app.data.Quiz
 
 /**
- * Card do Streak e Progresso Semanal.
+ * Representa um dia da semana no indicador de streak.
+ */
+data class DayStreakUi(
+    val dayName: String,
+    val isCompleted: Boolean,
+    val isToday: Boolean = false
+)
+
+/**
+ * Representa uma missão de desafio do aplicativo.
+ */
+data class MissionUi(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val currentProgress: Int,
+    val totalRequired: Int,
+    val xpReward: Int,
+    val isCompleted: Boolean
+)
+
+/**
+ * Card do Streak e Progresso Semanal conectado a dados reais.
  */
 @Composable
 fun StreakBannerCard(
-    streak: Dev5StreakMock,
+    currentStreak: Int,
+    completedMissionsCount: Int,
+    totalMissionsGoal: Int = 4,
+    daysOfWeek: List<DayStreakUi>,
     modifier: Modifier = Modifier
 ) {
-    val weeklyRatio = (streak.weeklyMissionsCompleted.toFloat() / streak.weeklyGoal.coerceAtLeast(1))
+    val weeklyRatio = (completedMissionsCount.toFloat() / totalMissionsGoal.coerceAtLeast(1))
         .coerceIn(0f, 1f)
     val animatedProgress by animateFloatAsState(targetValue = weeklyRatio, label = "weeklyProgress")
 
@@ -54,14 +79,15 @@ fun StreakBannerCard(
             ) {
                 Column {
                     Text(
-                        "🔥 ${streak.currentStreak} Dias Seguidos!",
+                        if (currentStreak > 0) "🔥 $currentStreak Dias Seguidos!" else "🔥 Comece sua Sequência!",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        "Melhor sequência: ${streak.bestStreak} dias",
+                        if (currentStreak >= 5) "Parabéns! Emblema de 5 dias conquistado!"
+                        else "Pratique diariamente para manter a chama acesa",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -85,14 +111,14 @@ fun StreakBannerCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                streak.daysOfWeek.forEach { day ->
+                daysOfWeek.forEach { day ->
                     DayStreakIndicator(day = day)
                 }
             }
 
             Spacer(Modifier.height(16.dp))
 
-            // Progresso de Missões Semanais
+            // Progresso de Missões
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -105,7 +131,7 @@ fun StreakBannerCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    "${streak.weeklyMissionsCompleted} de ${streak.weeklyGoal} missões",
+                    "$completedMissionsCount de $totalMissionsGoal missões",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
@@ -125,7 +151,7 @@ fun StreakBannerCard(
 }
 
 @Composable
-private fun DayStreakIndicator(day: Dev5DayStreakMock) {
+private fun DayStreakIndicator(day: DayStreakUi) {
     val isCompleted = day.isCompleted
     val isToday = day.isToday
 
@@ -169,11 +195,11 @@ private fun DayStreakIndicator(day: Dev5DayStreakMock) {
 }
 
 /**
- * Card individual para Missão Diária ou Semanal.
+ * Card individual para Missão do aplicativo.
  */
 @Composable
 fun MissionItemCard(
-    mission: Dev5MissionMock,
+    mission: MissionUi,
     modifier: Modifier = Modifier
 ) {
     val isDone = mission.isCompleted
@@ -218,7 +244,6 @@ fun MissionItemCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    // Chip de tipo de missão e XP
                     Text(
                         "+${mission.xpReward} XP",
                         style = MaterialTheme.typography.labelMedium,
@@ -261,11 +286,11 @@ fun MissionItemCard(
 }
 
 /**
- * Card de Apresentação de um Quiz Disponível.
+ * Card de Apresentação de um Quiz Disponível a partir de [QuizData].
  */
 @Composable
 fun QuizTopicCard(
-    quiz: Dev5QuizTopicMock,
+    quiz: Quiz,
     onStartQuiz: () -> Unit,
     modifier: Modifier = Modifier
 ) {
