@@ -1,9 +1,6 @@
-package com.elasnatech.app
+package com.elasnatech.app.ui.badges
 
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,9 +39,97 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.elasnatech.app.AppCard
+import com.elasnatech.app.data.repository.EarnedBadge
+import com.elasnatech.app.viewmodel.BadgesViewModel
+
+/**
+ * Modelo de apresentação visual de um emblema do aplicativo.
+ */
+data class BadgeItemUi(
+    val id: String,
+    val title: String,
+    val description: String,
+    val requirement: String,
+    val icon: String,
+    val isUnlocked: Boolean,
+    val earnedDate: String? = null
+)
+
+/**
+ * Catálogo estático dos emblemas do aplicativo Elas na Tech.
+ * Alinhado rigorosamente aos IDs verificados nas regras de negócio da equipe:
+ * "primeiro_quiz", "quiz_100_por_cento", "5_dias_seguidos", "nivel_5".
+ */
+val allAppBadgeDefinitions = listOf(
+    BadgeItemUi(
+        id = "primeiro_quiz",
+        title = "Primeiro Passo",
+        description = "Concluiu seu primeiro quiz na plataforma Elas na Tech.",
+        requirement = "Finalize qualquer um dos quizzes temáticos.",
+        icon = "🌱",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "quiz_100_por_cento",
+        title = "Gabarito Perfeito",
+        description = "Acertou 100% de todas as perguntas de um quiz.",
+        requirement = "Obtenha nota máxima (8 de 8 acertos) em um quiz.",
+        icon = "🎯",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "5_dias_seguidos",
+        title = "Fogo Constante",
+        description = "Manteve o hábito de aprendizado por 5 dias consecutivos.",
+        requirement = "Atinja uma sequência (streak) ininterrupta de 5 dias.",
+        icon = "🔥",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "nivel_5",
+        title = "Mestre da Tecnologia",
+        description = "Alcançou o nível 5 de experiência acumulada.",
+        requirement = "Acumule pelo menos 400 XP completando quizzes.",
+        icon = "👑",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "pioneiras_tech",
+        title = "Guardiã das Pioneiras",
+        description = "Dominou a história de Ada Lovelace, Grace Hopper e precursoras.",
+        requirement = "Conclua o Quiz 1 (Pioneiras da Computação).",
+        icon = "📜",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "mulheres_espaco",
+        title = "Conquistadora Espacial",
+        description = "Aprendeu sobre as matemáticas e engenheiras da NASA.",
+        requirement = "Conclua o Quiz 2 (Ciência Espacial & Hardware).",
+        icon = "🚀",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "redes_algoritmos",
+        title = "Arquiteta de Redes",
+        description = "Conheceu as inventoras de protocolos, circuitos e algoritmos.",
+        requirement = "Conclua o Quiz 3 (Linguagens, Algoritmos & Redes).",
+        icon = "🌐",
+        isUnlocked = false
+    ),
+    BadgeItemUi(
+        id = "tech_brasil",
+        title = "Orgulho Brasileiro",
+        description = "Explorou o impacto das cientistas e desenvolvedoras no Brasil.",
+        requirement = "Conclua o Quiz 4 (Mulheres Tech no Brasil).",
+        icon = "🇧🇷",
+        isUnlocked = false
+    )
+)
 
 private enum class BadgeFilter(val label: String) {
     ALL("Todos"),
@@ -54,21 +139,35 @@ private enum class BadgeFilter(val label: String) {
 
 @Composable
 fun BadgesScreen(
-    badges: List<Dev5BadgeMock> = Dev5MockData.badges,
+    badgesViewModel: BadgesViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val earnedBadges by badgesViewModel.emblemasConquistados.collectAsState()
+
     var selectedFilter by rememberSaveable { mutableStateOf(BadgeFilter.ALL) }
-    var selectedBadgeForDetails by remember { mutableStateOf<Dev5BadgeMock?>(null) }
+    var selectedBadgeForDetails by remember { mutableStateOf<BadgeItemUi?>(null) }
 
-    val unlockedCount = badges.count { it.isUnlocked }
-    val totalCount = badges.size
+    // Mapeia o catálogo visual com o banco Room através do BadgesViewModel
+    val mappedBadges = remember(earnedBadges) {
+        allAppBadgeDefinitions.map { badgeDef ->
+            val earned = earnedBadges.find { it.badgeId == badgeDef.id }
+            if (earned != null) {
+                badgeDef.copy(isUnlocked = true, earnedDate = earned.earnedDate)
+            } else {
+                badgeDef.copy(isUnlocked = false, earnedDate = null)
+            }
+        }
+    }
 
-    val filteredBadges = remember(selectedFilter, badges) {
+    val unlockedCount = mappedBadges.count { it.isUnlocked }
+    val totalCount = mappedBadges.size
+
+    val filteredBadges = remember(selectedFilter, mappedBadges) {
         when (selectedFilter) {
-            BadgeFilter.ALL -> badges
-            BadgeFilter.UNLOCKED -> badges.filter { it.isUnlocked }
-            BadgeFilter.LOCKED -> badges.filter { !it.isUnlocked }
+            BadgeFilter.ALL -> mappedBadges
+            BadgeFilter.UNLOCKED -> mappedBadges.filter { it.isUnlocked }
+            BadgeFilter.LOCKED -> mappedBadges.filter { !it.isUnlocked }
         }
     }
 
@@ -77,7 +176,7 @@ fun BadgesScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Cabeçalho de resumo da coleção
+        // Card de Resumo da Coleção
         item {
             AppCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp)) {
@@ -115,7 +214,7 @@ fun BadgesScreen(
             }
         }
 
-        // Filtros (Todos / Conquistados / Bloqueados)
+        // Filtros Rápidos (Todos / Conquistados / Bloqueados)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -143,7 +242,7 @@ fun BadgesScreen(
             }
         }
 
-        // Lista de Emblemas
+        // Lista de Cards de Emblemas
         items(filteredBadges, key = { it.id }) { badge ->
             BadgeItemCard(
                 badge = badge,
@@ -160,7 +259,7 @@ fun BadgesScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "Nenhum emblema nesta categoria.",
+                        "Nenhum emblema encontrado nesta categoria.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -169,7 +268,7 @@ fun BadgesScreen(
         }
     }
 
-    // Modal de Detalhes do Emblema
+    // Modal de Detalhes do Emblema ao Tocar
     selectedBadgeForDetails?.let { badge ->
         AlertDialog(
             onDismissRequest = { selectedBadgeForDetails = null },
@@ -192,7 +291,7 @@ fun BadgesScreen(
                     )
                     Text(badge.requirement, style = MaterialTheme.typography.bodyMedium)
 
-                    Spacer(Modifier.height(10.dp))
+                    Spacer(Modifier.height(12.dp))
                     if (badge.isUnlocked) {
                         Text(
                             "✅ Conquistado em: ${badge.earnedDate ?: "Recentemente"}",
@@ -202,7 +301,7 @@ fun BadgesScreen(
                         )
                     } else {
                         Text(
-                            "🔒 Emblema bloqueado. Complete o desafio para liberar!",
+                            "🔒 Emblema bloqueado. Conclua os desafios para desbloquear!",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -217,10 +316,10 @@ fun BadgesScreen(
                             type = "text/plain"
                             putExtra(
                                 Intent.EXTRA_TEXT,
-                                "Conquistei o emblema \"${badge.title}\" (${badge.icon}) no app Elas na Tech! Venha aprender mais sobre mulheres na tecnologia."
+                                "Conquistei o emblema \"${badge.title}\" (${badge.icon}) no app Elas na Tech! Venha aprender sobre mulheres na tecnologia."
                             )
                         }
-                        context.startActivity(Intent.createChooser(intent, "Compartilhar Emblema"))
+                        context.startActivity(Intent.createChooser(intent, "Compartilhar Conquista"))
                     }) {
                         Text("Compartilhar")
                     }
@@ -243,12 +342,12 @@ fun BadgesScreen(
 
 @Composable
 fun BadgeItemCard(
-    badge: Dev5BadgeMock,
+    badge: BadgeItemUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isUnlocked = badge.isUnlocked
-    val contentAlpha = if (isUnlocked) 1.0f else 0.48f
+    val contentAlpha = if (isUnlocked) 1.0f else 0.45f
 
     AppCard(
         modifier = modifier
@@ -261,10 +360,10 @@ fun BadgeItemCard(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícone do Emblema (Dourado/Lilás se conquistado, Cinza com cadeado se bloqueado)
+            // Círculo com Ícone (dourado/destaque se conquistado, cinza se bloqueado)
             Box(
                 modifier = Modifier
-                    .size(62.dp)
+                    .size(60.dp)
                     .clip(CircleShape)
                     .background(
                         if (isUnlocked)
@@ -275,15 +374,15 @@ fun BadgeItemCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (isUnlocked) {
-                    Text(badge.icon, fontSize = 30.sp)
+                    Text(badge.icon, fontSize = 28.sp)
                 } else {
-                    Text("🔒", fontSize = 24.sp, modifier = Modifier.alpha(0.8f))
+                    Text("🔒", fontSize = 22.sp, modifier = Modifier.alpha(0.8f))
                 }
             }
 
             Spacer(Modifier.width(16.dp))
 
-            // Informações do Emblema
+            // Textos informativos
             Column(
                 modifier = Modifier
                     .weight(1f)

@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.elasnatech.app.AppCard
-import com.elasnatech.app.BadgesScreen
+import com.elasnatech.app.ui.badges.BadgesScreen
 import com.elasnatech.app.QuizQuestion
 import com.elasnatech.app.SectionTitle
 import com.elasnatech.app.badgeFor
