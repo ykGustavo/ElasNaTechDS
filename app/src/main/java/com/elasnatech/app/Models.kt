@@ -103,13 +103,33 @@ object MockData {
 
     val newsCategories = listOf("Vagas", "Eventos", "Cursos Gratuitos")
 
+    // Notícias reais, conferidas em 01/11/2026. A data é a da publicação (vagas) ou do evento;
+    // nos cursos gratuitos, que não têm data de publicação, é a data em que as informações foram conferidas.
     val news = listOf(
-        NewsItem(1, "Exemplo: vaga júnior para desenvolvedora", "Vagas", "10/10/2026", "Texto de exemplo para a vaga."),
-        NewsItem(2, "Exemplo: programa de estágio em tecnologia", "Vagas", "09/10/2026", "Texto de exemplo para o estágio."),
-        NewsItem(3, "Exemplo: encontro de mulheres na tech", "Eventos", "15/10/2026", "Texto de exemplo para o evento."),
-        NewsItem(4, "Exemplo: hackathon feminino", "Eventos", "22/10/2026", "Texto de exemplo para o hackathon."),
-        NewsItem(5, "Exemplo: curso de lógica de programação", "Cursos Gratuitos", "01/11/2026", "Texto de exemplo para o curso."),
-        NewsItem(6, "Exemplo: trilha de Python para iniciantes", "Cursos Gratuitos", "05/11/2026", "Texto de exemplo para a trilha.")
+        NewsItem(
+            1, "iFood abre 50 vagas remotas para mulheres na tecnologia", "Vagas", "16/04/2026",
+            "A 3ª edição do programa Elas São Tech ofereceu 50 vagas 100% remotas para mulheres profissionais de tecnologia nos níveis pleno, sênior e especialista, com inscrições de 15/04 a 02/05 e admissões previstas para junho de 2026. Inscrições encerradas. Fonte: iFood."
+        ),
+        NewsItem(
+            2, "B3 abre estágio em tecnologia exclusivo para mulheres", "Vagas", "29/07/2026",
+            "A 7ª edição do Manas da Tech reservou ao menos 50% das vagas a estudantes pretas ou pardas. Eram elegíveis estudantes de Tecnologia, Matemática, Estatística, Física ou Engenharia com conclusão prevista a partir de setembro de 2027, em modelo híbrido (São Paulo e Santana de Parnaíba). Inscrições até 07/08/2026. Fonte: divulgação da B3."
+        ),
+        NewsItem(
+            3, "Festival Mulheres de Produto 2026", "Eventos", "07/11/2026",
+            "Encontro presencial em São Paulo (FAPCOM) para mulheres que atuam com produto e tecnologia. O site oficial divulga 4 trilhas, mais de 10 palestrantes, mais de 50 mentorias e mais de 400 participantes. Fonte: site do Festival Mulheres de Produto."
+        ),
+        NewsItem(
+            4, "Hackathon ElasSãoTech, da Assespro-PR", "Eventos", "06/11/2026",
+            "Hackathon presencial com início às 18h, na véspera do encontro ElaSão Tech – Feito por ELAS para TODOS (07/11, às 9h, no Centro Regional de Eventos de Pato Branco, PR, durante o Inventum 2026). Fonte: Assespro-PR."
+        ),
+        NewsItem(
+            5, "Curso gratuito de Lógica de Programação da Trybe", "Cursos Gratuitos", "01/11/2026",
+            "Curso online sem pré-requisitos, com materiais em português e mais de 30 exercícios com resolução. O certificado é gratuito para quem concluir todo o conteúdo e acertar ao menos 80% das questões. Fonte: Trybe (informações conferidas em 01/11/2026)."
+        ),
+        NewsItem(
+            6, "Python Básico, curso gratuito da Fundação Bradesco", "Cursos Gratuitos", "01/11/2026",
+            "Curso de nível iniciante na Escola Virtual, com 18 horas e 60 dias para concluir. Aborda lógica de programação, variáveis e tipos de dados, estruturas lógicas e funções, com programas em modo console. Fonte: Escola Virtual da Fundação Bradesco (informações conferidas em 01/11/2026)."
+        )
     )
 
     val communities = listOf(
@@ -124,31 +144,6 @@ object MockData {
         SupportItem("Bolsas de estudo", "TODO: adicionar bolsas e cursos gratuitos.")
     )
 
-    val quiz = listOf(
-        QuizQuestion(
-            "Quem é considerada a primeira programadora da história?",
-            listOf("Grace Hopper", "Ada Lovelace", "Hedy Lamarr"), 1,
-            "Ada Lovelace escreveu o primeiro algoritmo para uma máquina, em 1843."
-        ),
-        QuizQuestion(
-            "Quem desenvolveu um dos primeiros compiladores?",
-            listOf("Grace Hopper", "Katherine Johnson", "Margaret Hamilton"), 0,
-            "Grace Hopper criou um dos primeiros compiladores, em 1952."
-        ),
-        QuizQuestion(
-            "Hedy Lamarr patenteou qual tecnologia?",
-            listOf("Compilador", "Salto de frequência", "Banco de dados"), 1,
-            "A patente de 1942 usava salto de frequência."
-        ),
-        QuizQuestion(
-            "Quem liderou o software de bordo da Apollo?",
-            listOf("Margaret Hamilton", "Ada Lovelace", "Grace Hopper"), 0,
-            "Margaret Hamilton liderou a equipe do software da Apollo."
-        ),
-        QuizQuestion(
-            "Katherine Johnson trabalhou em qual agência?",
-            listOf("NASA", "Google", "IBM"), 0,
-            "Ela calculou trajetórias de missões para a NASA."
-        )
-    )
+    // Quiz com 16 perguntas ricas de 4 alternativas sobre mulheres na tecnologia
+    val quiz = com.elasnatech.app.ui.quiz.QuizQuestions.allQuestions
 }
