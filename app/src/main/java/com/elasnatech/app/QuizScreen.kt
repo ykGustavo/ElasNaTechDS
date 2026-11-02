@@ -208,7 +208,7 @@ private fun ChallengesHomeView(
 
         // Lista de Missões
         item { SectionTitle("Missões em Andamento") }
-        items(missions, key = { it.id }) { mission ->
+        items(missions, key = { "mission_${it.id}" }) { mission ->
             MissionItemCard(mission = mission)
         }
 
@@ -217,7 +217,7 @@ private fun ChallengesHomeView(
             Spacer(Modifier.height(4.dp))
             SectionTitle("Quizzes Temáticos")
         }
-        items(QuizData.allQuizzes, key = { it.id }) { quiz ->
+        items(QuizData.allQuizzes, key = { "quiz_${it.id}" }) { quiz ->
             QuizTopicCard(
                 quiz = quiz,
                 onStartQuiz = { onSelectQuiz(quiz) }
